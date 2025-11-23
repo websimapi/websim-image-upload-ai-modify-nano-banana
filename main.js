@@ -15,6 +15,8 @@ const saveModifiedBtn = document.getElementById('saveModifiedBtn');
 let uploadedUrl = null;
 let generatedUrl = null;
 let lastUploadRecord = null;
+// new variable to hold an image pasted from clipboard
+let pastedFile = null;
 
 function setStatus(text){
   status.textContent = text;
@@ -22,6 +24,8 @@ function setStatus(text){
 
 fileInput.addEventListener('change', () => {
   const f = fileInput.files && fileInput.files[0];
+  // clear any previous pasted file when a real file is chosen
+  pastedFile = null;
   if (!f) return;
   originalImg.src = URL.createObjectURL(f);
   uploadedUrl = null;
@@ -33,10 +37,58 @@ fileInput.addEventListener('change', () => {
   setStatus('File selected. Upload to Websim to enable AI generation.');
 });
 
+// Paste handler: support Ctrl+V or right-click paste of images
+window.addEventListener('paste', async (e) => {
+  try {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image')) {
+        const blob = item.getAsFile ? item.getAsFile() : item;
+        if (!blob) continue;
+        // store as pastedFile so upload uses it
+        pastedFile = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+        // show preview
+        originalImg.src = URL.createObjectURL(pastedFile);
+        uploadedUrl = null;
+        generatedUrl = null;
+        originalUrl.textContent = '';
+        modifiedUrl.textContent = '';
+        generateBtn.disabled = true;
+        saveModifiedBtn.disabled = true;
+        setStatus('Image pasted. Upload to Websim to enable AI generation.');
+        // prevent default so some browsers don't also try to insert the image into focused element
+        e.preventDefault();
+        break;
+      }
+      // Also support file items (e.g., copy from Finder)
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file && file.type.startsWith('image')) {
+          pastedFile = new File([file], file.name, { type: file.type });
+          originalImg.src = URL.createObjectURL(pastedFile);
+          uploadedUrl = null;
+          generatedUrl = null;
+          originalUrl.textContent = '';
+          modifiedUrl.textContent = '';
+          generateBtn.disabled = true;
+          saveModifiedBtn.disabled = true;
+          setStatus('Image pasted. Upload to Websim to enable AI generation.');
+          e.preventDefault();
+          break;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Paste handling error', err);
+  }
+});
+
 uploadBtn.addEventListener('click', async () => {
-  const f = fileInput.files && fileInput.files[0];
+  // use selected file or pastedFile if present
+  const f = (fileInput.files && fileInput.files[0]) || pastedFile;
   if (!f) {
-    setStatus('No file selected.');
+    setStatus('No file selected or pasted.');
     return;
   }
   try {
