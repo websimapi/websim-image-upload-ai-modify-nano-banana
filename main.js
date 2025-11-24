@@ -152,9 +152,12 @@ generateBtn.addEventListener('click', async () => {
     setStatus('Upload or generate a base image first.');
     return;
   }
-  // Force modification prompt to use "nano banana"
-  const nanoPrompt = 'nano banana';
-  const fullPrompt = `${nanoPrompt} — modify this image in a playful, clear way, keep subject visible.`;
+  // Internal operation name (do not append to user-visible prompt)
+  const operationName = 'nano banana';
+  // Use user's prompt if provided, otherwise use a neutral default for the AI request
+  const userPrompt = (promptInput.value || '').trim();
+  const aiPrompt = userPrompt || 'Modify this image in a playful, clear way while keeping the subject visible.';
+
   try {
     setStatus('Generating modified image (nano banana, ~10s)...');
     generateBtn.disabled = true;
@@ -162,7 +165,8 @@ generateBtn.addEventListener('click', async () => {
     // If the uploadedUrl is already a data url we can pass it through; otherwise fetch and convert
     const dataUrl = await urlToDataUrl(uploadedUrl);
     const result = await websim.imageGen({
-      prompt: fullPrompt,
+      // Use the aiPrompt (no "nano banana" appended)
+      prompt: aiPrompt,
       image_inputs: [{ url: dataUrl }],
     });
 
@@ -191,7 +195,9 @@ saveModifiedBtn.addEventListener('click', async () => {
       original_record_id: lastUploadRecord ? lastUploadRecord.id : null,
       original_url: uploadedUrl,
       modified_url: generatedUrl,
-      prompt: promptInput.value || 'nano banana'
+      // store the user's prompt (or a neutral label) separately from the operation name
+      prompt: (promptInput.value || 'Modified image (no prompt provided)'),
+      operation: 'nano banana'
     });
     setStatus('Saved modified image record: ' + rec.id);
   } catch (err) {
