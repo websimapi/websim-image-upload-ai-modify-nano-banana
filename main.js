@@ -6,6 +6,8 @@ const uploadBtn = document.getElementById('uploadBtn');
 const generateBtn = document.getElementById('generateBtn');
 const generateBaseBtn = document.getElementById('generateBaseBtn');
 const promptInput = document.getElementById('promptInput');
+const baseTransparent = document.getElementById('baseTransparent');
+const modifiedTransparent = document.getElementById('modifiedTransparent');
 const status = document.getElementById('status');
 const originalImg = document.getElementById('originalImg');
 const modifiedImg = document.getElementById('modifiedImg');
@@ -125,6 +127,7 @@ generateBaseBtn.addEventListener('click', async () => {
     // call websim.imageGen to simulate FreeFlux Schnell generator
     const result = await websim.imageGen({
       prompt: basePrompt,
+      transparent: !!baseTransparent.checked,
       // you could add width/height or other options here
     });
     // treat the generated base as the "uploaded" source for later modification
@@ -167,6 +170,7 @@ generateBtn.addEventListener('click', async () => {
     const result = await websim.imageGen({
       // Use the aiPrompt (no "nano banana" appended)
       prompt: aiPrompt,
+      transparent: !!modifiedTransparent.checked,
       image_inputs: [{ url: dataUrl }],
     });
 
