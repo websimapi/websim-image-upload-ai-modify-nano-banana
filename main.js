@@ -4,6 +4,7 @@
 const fileInput = document.getElementById('fileInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const generateBtn = document.getElementById('generateBtn');
+const generateBaseBtn = document.getElementById('generateBaseBtn');
 const promptInput = document.getElementById('promptInput');
 const status = document.getElementById('status');
 const originalImg = document.getElementById('originalImg');
@@ -114,24 +115,55 @@ uploadBtn.addEventListener('click', async () => {
   }
 });
 
+// New: generate a base image using "FreeFlux Schnell"
+generateBaseBtn.addEventListener('click', async () => {
+  const userPrompt = (promptInput.value || 'free flux schnell').trim();
+  const basePrompt = `${userPrompt} — generate a clear, playful image`;
+  try {
+    setStatus('Generating base image (FreeFlux Schnell, ~10s)...');
+    generateBaseBtn.disabled = true;
+    // call websim.imageGen to simulate FreeFlux Schnell generator
+    const result = await websim.imageGen({
+      prompt: basePrompt,
+      // you could add width/height or other options here
+    });
+    // treat the generated base as the "uploaded" source for later modification
+    uploadedUrl = result.url;
+    originalImg.src = uploadedUrl;
+    originalUrl.textContent = uploadedUrl;
+    // save a record for the base generation
+    lastUploadRecord = await room.collection('image_v1').create({
+      file_url: uploadedUrl,
+      filename: 'base-generated.png',
+      prompt: userPrompt
+    });
+    setStatus('Base image generated and saved. Now click "Generate Modified Image" to apply nano banana.');
+    generateBtn.disabled = false;
+  } catch (err) {
+    console.error(err);
+    setStatus('Base generation failed: ' + (err.message || err));
+  } finally {
+    generateBaseBtn.disabled = false;
+  }
+});
+
 generateBtn.addEventListener('click', async () => {
   if (!uploadedUrl) {
-    setStatus('Upload an image first.');
+    setStatus('Upload or generate a base image first.');
     return;
   }
-  const userPrompt = (promptInput.value || 'nano banana').trim();
-  const fullPrompt = `${userPrompt} — modify this image in a playful, clear way, keep subject visible.`;
+  // Force modification prompt to use "nano banana"
+  const nanoPrompt = 'nano banana';
+  const fullPrompt = `${nanoPrompt} — modify this image in a playful, clear way, keep subject visible.`;
   try {
-    setStatus('Generating image (this takes ~10s)...');
+    setStatus('Generating modified image (nano banana, ~10s)...');
     generateBtn.disabled = true;
 
-    // Use websim.imageGen with the uploaded image as input.
-    // websim.imageGen expects base64 data for image_inputs, so fetch and convert.
+    // If the uploadedUrl is already a data url we can pass it through; otherwise fetch and convert
     const dataUrl = await urlToDataUrl(uploadedUrl);
     const result = await websim.imageGen({
       prompt: fullPrompt,
       image_inputs: [{ url: dataUrl }],
-      // keep default size; you can add width/height if desired
     });
 
     generatedUrl = result.url;
